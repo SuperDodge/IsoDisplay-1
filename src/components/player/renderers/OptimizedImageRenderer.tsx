@@ -201,7 +201,7 @@ export function OptimizedImageRenderer({ item, onError, onLoad, preload = false,
         style={{
           ...scalingStyle,
           opacity: isReady ? 1 : 0,
-          transition: isRPi.current ? 'none' : 'opacity 0.2s ease-in-out'
+          transition: isRPi.current ? 'opacity 0.2s linear' : 'opacity 0.2s ease-in-out'
         }}
         loading="eager"
         decoding="sync"

@@ -79,13 +79,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     
     const body = await request.json();
-    
+
     // Validate request body
     const validation = validateUpdateDisplay(body);
     if (!validation.success) {
       return validationErrorResponse(validation.error);
     }
-    
+
     const validatedData = validation.data as UpdateDisplayInput;
 
     const display = await displayService.updateDisplay(id, validatedData);

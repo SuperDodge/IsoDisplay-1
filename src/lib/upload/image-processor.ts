@@ -459,7 +459,7 @@ export async function generateDisplayThumbnail(
       resizedImage = await sharp(inputPath)
         .rotate() // Auto-rotate based on EXIF orientation
         .resize(targetWidth, targetHeight, {
-          fit: 'fill',
+          fit: 'inside',  // Changed from 'fill' to 'inside' to preserve aspect ratio
           withoutEnlargement: true
         })
         .toBuffer();

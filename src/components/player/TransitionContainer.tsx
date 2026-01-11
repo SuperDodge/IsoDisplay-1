@@ -1,7 +1,7 @@
 'use client';
 
-import { ReactNode, memo, useRef, useEffect, useState } from 'react';
-import { CSSTransition, SwitchTransition } from 'react-transition-group';
+import { ReactNode, memo, useRef, useEffect, useState, useCallback, createRef, type RefObject, type CSSProperties } from 'react';
+import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import { TransitionEffect } from '@/types/playlist';
 import { isLowPowerDevice } from '@/lib/device-detection';
 import '@/styles/transitions.css';
@@ -21,17 +21,17 @@ export const TransitionContainer = memo(function TransitionContainer({
   contentKey,
   displaySettings,
 }: TransitionContainerProps) {
-  const nodeRef = useRef<HTMLDivElement>(null);
-  const [isLowPowerDevice, setIsLowPowerDevice] = useState(false);
+  const nodeRefs = useRef(new Map<string | number, RefObject<HTMLDivElement>>());
+  const [isLowPower, setIsLowPower] = useState(false);
   const [optimizedTransition, setOptimizedTransition] = useState(transition);
   const [optimizedDuration, setOptimizedDuration] = useState(duration);
 
   useEffect(() => {
     // Use the device detection utility with display settings
-    const isLowPower = isLowPowerDevice(displaySettings);
-    setIsLowPowerDevice(isLowPower);
+    const lowPower = isLowPowerDevice(displaySettings);
+    setIsLowPower(lowPower);
 
-    if (isLowPower) {
+    if (lowPower) {
       // Simplify complex transitions to fade for better performance
       const complexTransitions = ['dissolve', 'burn', 'morph', 'zoom', 'iris', 'peel', 'page-roll'];
       if (complexTransitions.includes(transition)) {
@@ -46,15 +46,30 @@ export const TransitionContainer = memo(function TransitionContainer({
       setOptimizedTransition(transition);
       setOptimizedDuration(duration);
     }
-  }, [transition, duration]);
+  }, [transition, duration, displaySettings]);
+
+  const getNodeRef = useCallback((key: string | number) => {
+    if (!nodeRefs.current.has(key)) {
+      nodeRefs.current.set(key, createRef<HTMLDivElement>());
+    }
+    return nodeRefs.current.get(key)!;
+  }, []);
 
   const transitionClassNames = `transition-${optimizedTransition}`;
-  const timeout = optimizedDuration * 1000;
+  const enterDuration = optimizedDuration;
+  const exitDuration = Math.min(optimizedDuration, 0.3);
+  const timeout = {
+    enter: enterDuration * 1000,
+    exit: exitDuration * 1000,
+  } as const;
+  const nodeRef = getNodeRef(contentKey);
 
   // Set CSS variable for transition duration
-  const style = {
-    '--transition-duration': `${optimizedDuration}s`,
-  } as React.CSSProperties;
+  const style: CSSProperties = {
+    '--transition-duration': `${enterDuration}s`,
+    '--transition-enter-duration': `${enterDuration}s`,
+    '--transition-exit-duration': `${exitDuration}s`,
+  };
 
   // For instant transitions (cut), just render without animation
   if (optimizedTransition === 'cut') {
@@ -67,39 +82,35 @@ export const TransitionContainer = memo(function TransitionContainer({
 
   return (
     <div
-      className={`relative w-full h-full gpu-accelerated hardware-accelerate overflow-hidden ${isLowPowerDevice ? 'low-power-optimize' : ''}`}
+      className={`relative w-full h-full gpu-accelerated hardware-accelerate overflow-hidden ${isLowPower ? 'low-power-optimize' : ''}`}
       style={{
-        perspective: isLowPowerDevice ? 'none' : '1200px',
-        transformStyle: isLowPowerDevice ? 'flat' : 'preserve-3d',
+        perspective: isLowPower ? 'none' : '1200px',
+        transformStyle: isLowPower ? 'flat' : 'preserve-3d',
       }}
     >
-      <SwitchTransition>
+      <TransitionGroup component={null}>
         <CSSTransition
           key={contentKey}
           timeout={timeout}
           classNames={transitionClassNames}
           nodeRef={nodeRef}
-          addEndListener={(done) => {
-            if (nodeRef.current) {
-              nodeRef.current.addEventListener('transitionend', done, false);
-            }
-          }}
+          unmountOnExit
         >
           <div
             ref={nodeRef}
-            className={`absolute inset-0 gpu-transition ${isLowPowerDevice ? 'low-power-optimize' : ''}`}
+            className={`absolute inset-0 gpu-transition ${isLowPower ? 'low-power-optimize' : ''}`}
             style={{
               ...style,
-              transformStyle: isLowPowerDevice ? 'flat' : 'preserve-3d',
+              transformStyle: isLowPower ? 'flat' : 'preserve-3d',
               backfaceVisibility: 'hidden',
-              willChange: isLowPowerDevice ? 'opacity' : 'transform, opacity',
+              willChange: isLowPower ? 'opacity' : 'transform, opacity',
               transform: 'translateZ(0)', // Force GPU layer
             }}
           >
             {children}
           </div>
         </CSSTransition>
-      </SwitchTransition>
+      </TransitionGroup>
     </div>
   );
 });

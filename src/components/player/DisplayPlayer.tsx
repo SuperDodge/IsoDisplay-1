@@ -411,7 +411,7 @@ export function DisplayPlayer({ display, playlist: initialPlaylist, onConnection
     trackView,
   ]);
 
-  const renderContent = (item: PlaylistItem | null) => {
+  const renderContent = (item: PlaylistItem | null, options?: { preload?: boolean }) => {
     if (!item) return null;
 
     // Handle both lowercase and uppercase content types
@@ -419,7 +419,13 @@ export function DisplayPlayer({ display, playlist: initialPlaylist, onConnection
 
     switch (contentType) {
       case 'image':
-        return <OptimizedImageRenderer item={item} displaySettings={{ isRaspberryPi: display.isRaspberryPi }} />;
+        return (
+          <OptimizedImageRenderer
+            item={item}
+            preload={options?.preload}
+            displaySettings={{ isRaspberryPi: display.isRaspberryPi }}
+          />
+        );
       case 'video':
         return <VerticalVideoRenderer item={item} isPlaying={isPlaying} onEnded={moveToNextItem} />;
       case 'pdf':
@@ -451,7 +457,11 @@ export function DisplayPlayer({ display, playlist: initialPlaylist, onConnection
       </TransitionContainer>
 
       {/* Preload next item */}
-      {nextItem && <div className="hidden">{renderContent(nextItem)}</div>}
+      {nextItem && (
+        <div className="hidden" aria-hidden="true">
+          {renderContent(nextItem, { preload: true })}
+        </div>
+      )}
 
       {/* Debug info (remove in production) */}
       {process.env.NODE_ENV === 'development' && (

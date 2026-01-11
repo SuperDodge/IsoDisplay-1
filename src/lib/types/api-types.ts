@@ -138,6 +138,7 @@ export interface ApiDisplayResponse {
   lastSeen: string | null;
   isOnline?: boolean;
   isActive?: boolean;
+  isRaspberryPi?: boolean;
   location: string | null;
   createdAt: string;
   updatedAt: string;
@@ -217,6 +218,7 @@ export interface CreateDisplayRequest {
   resolution?: string;
   orientation?: DisplayOrientation;
   location?: string;
+  isRaspberryPi?: boolean;
 }
 
 /**
@@ -228,4 +230,5 @@ export interface UpdateDisplayRequest {
   resolution?: string;
   orientation?: DisplayOrientation;
   location?: string;
+  isRaspberryPi?: boolean;
 }

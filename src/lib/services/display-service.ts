@@ -41,6 +41,7 @@ class DisplayService {
         playlistId: input.assignedPlaylistId || null,
         isOnline: false,
         clockSettings: input.clockSettings || {},
+        isRaspberryPi: input.isRaspberryPi || false,
       },
       include: {
         playlist: {
@@ -164,6 +165,7 @@ class DisplayService {
     if (input.resolution !== undefined) updateData.resolution = input.resolution;
     if (input.orientation !== undefined) updateData.orientation = input.orientation as DisplayOrientation;
     if (input.assignedPlaylistId !== undefined) updateData.playlistId = input.assignedPlaylistId;
+    if (input.isRaspberryPi !== undefined) updateData.isRaspberryPi = input.isRaspberryPi;
     
     // Handle clockSettings - ensure it's a valid JSON object
     if (input.clockSettings !== undefined) {
@@ -364,6 +366,7 @@ class DisplayService {
       isActive: true,  // Always true since we don't have soft delete
       settings: {},  // No settings field in schema
       clockSettings: display.clockSettings || {},
+      isRaspberryPi: display.isRaspberryPi || false,
     };
   }
 }

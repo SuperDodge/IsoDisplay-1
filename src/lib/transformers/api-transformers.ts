@@ -162,6 +162,7 @@ export function apiToFrontendDisplay(apiDisplay: ApiDisplayResponse) {
     isActive: apiDisplay.isActive !== undefined ? apiDisplay.isActive : true,
     status: status,
     location: apiDisplay.location,
+    isRaspberryPi: apiDisplay.isRaspberryPi || false,
     createdAt: new Date(apiDisplay.createdAt),
     updatedAt: new Date(apiDisplay.updatedAt),
   };
@@ -547,6 +548,7 @@ export function databaseToApiDisplay(dbDisplay: any): ApiDisplayResponse {
     orientation: dbDisplay.orientation,
     location: dbDisplay.location,
     isActive: dbDisplay.isActive,
+    isRaspberryPi: dbDisplay.isRaspberryPi || false,
     playlistId: dbDisplay.playlistId,
     lastSeen: dbDisplay.lastSeen?.toISOString() || null,
     createdAt: dbDisplay.createdAt.toISOString(),

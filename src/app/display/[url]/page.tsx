@@ -6,9 +6,51 @@ import DisplayPlayer from '@/components/player/DisplayPlayer';
 import PlayerErrorBoundary from '@/components/player/PlayerErrorBoundary';
 import { FallbackContent } from '@/components/player/FallbackContent';
 import { ClockOverlay } from '@/components/player/ClockOverlay';
+import type { ClockConfig } from '@/components/displays/ClockSettings';
 import { Display } from '@/types/display';
 import { Playlist } from '@/types/playlist';
 import { useSocketConnection } from '@/hooks/useSocketConnection';
+
+// Default clock settings to use if invalid or missing
+const DEFAULT_CLOCK_SETTINGS: ClockConfig = {
+  enabled: false,
+  position: 'top-right',
+  size: 'medium',
+  format: '12h',
+  showSeconds: true,
+  showDate: false,
+  opacity: 80,
+  color: '#FFFFFF',
+  backgroundColor: '#000000',
+  fontFamily: 'digital',
+  offsetX: 20,
+  offsetY: 20,
+};
+
+// Helper function to validate and normalize clock settings
+const getValidClockSettings = (settings: any): ClockConfig | null => {
+  if (!settings || typeof settings !== 'object') {
+    return null;
+  }
+
+  // Ensure all required properties exist
+  const validSettings: ClockConfig = {
+    enabled: settings.enabled === true,
+    position: settings.position || DEFAULT_CLOCK_SETTINGS.position,
+    size: settings.size || DEFAULT_CLOCK_SETTINGS.size,
+    format: settings.format || DEFAULT_CLOCK_SETTINGS.format,
+    showSeconds: settings.showSeconds !== false,
+    showDate: settings.showDate === true,
+    opacity: typeof settings.opacity === 'number' ? settings.opacity : DEFAULT_CLOCK_SETTINGS.opacity,
+    color: settings.color || DEFAULT_CLOCK_SETTINGS.color,
+    backgroundColor: settings.backgroundColor || DEFAULT_CLOCK_SETTINGS.backgroundColor,
+    fontFamily: settings.fontFamily || DEFAULT_CLOCK_SETTINGS.fontFamily,
+    offsetX: typeof settings.offsetX === 'number' ? settings.offsetX : DEFAULT_CLOCK_SETTINGS.offsetX,
+    offsetY: typeof settings.offsetY === 'number' ? settings.offsetY : DEFAULT_CLOCK_SETTINGS.offsetY,
+  };
+
+  return validSettings.enabled ? validSettings : null;
+};
 
 export default function DisplayViewerPage() {
   const params = useParams();
@@ -18,7 +60,71 @@ export default function DisplayViewerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playerConnectionStatus, setPlayerConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
-  // Handle remote commands
+
+  // Use useCallback with proper dependencies for stable function reference
+  const fetchDisplay = useCallback(async (isPolling = false) => {
+    try {
+      const response = await fetch(`/api/display/${uniqueUrl}`, {
+        cache: 'no-cache',  // Force fresh data
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Display not found');
+      }
+      const data = await response.json();
+
+      // Only log and check for changes during polling
+      if (isPolling) {
+        console.log('Polling - Fetched display data:', data);
+        console.log('Current playlist ID:', playlist?.id);
+        console.log('New playlist ID:', data.assignedPlaylist?.id);
+
+        // Don't reload the page when setting to null - let React handle the transition
+        // The page reload was causing the error boundary issues
+
+        // Check if playlist has actually changed (but not to/from null)
+        const playlistChanged =
+          data.assignedPlaylist && playlist && (
+            (playlist?.id !== data.assignedPlaylist?.id) ||
+            (playlist?.items?.length !== data.assignedPlaylist?.items?.length)
+          );
+
+        if (playlistChanged) {
+          console.log('Playlist changed detected, reloading page...');
+          // Clear any cached data
+          localStorage.removeItem(`isodisplay_playlist_${display?.id}`);
+          // Force a full page reload
+          setTimeout(() => window.location.reload(), 100);
+          return;
+        }
+      }
+
+      // Normal update without reload
+      setDisplay(data);
+
+      if (data.assignedPlaylist) {
+        setPlaylist(data.assignedPlaylist);
+        setError(null);
+      } else {
+        setPlaylist(null);
+        // Only set error if no display found
+        if (!data) {
+          setError('No content available');
+        } else {
+          setError(null);
+        }
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching display:', err);
+      setError('Failed to load display');
+      setLoading(false);
+    }
+  }, [uniqueUrl, display?.id, playlist?.id, playlist?.items?.length]);
+
+  // Handle remote commands with useCallback
   const handleRemoteCommand = useCallback((command: any) => {
     switch (command.action) {
       case 'reload':
@@ -35,7 +141,7 @@ export default function DisplayViewerPage() {
         }
         break;
     }
-  }, []);
+  }, [fetchDisplay]);
 
   // Initialize Socket.io connection
   // Always keep WebSocket connected even if display is null, so we can receive updates
@@ -129,69 +235,7 @@ export default function DisplayViewerPage() {
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [uniqueUrl]);
-
-  const fetchDisplay = async (isPolling = false) => {
-    try {
-      const response = await fetch(`/api/display/${uniqueUrl}`, {
-        cache: 'no-cache',  // Force fresh data
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Display not found');
-      }
-      const data = await response.json();
-      
-      // Only log and check for changes during polling
-      if (isPolling) {
-        console.log('Polling - Fetched display data:', data);
-        console.log('Current playlist ID:', playlist?.id);
-        console.log('New playlist ID:', data.assignedPlaylist?.id);
-        
-        // Don't reload the page when setting to null - let React handle the transition
-        // The page reload was causing the error boundary issues
-        
-        // Check if playlist has actually changed (but not to/from null)
-        const playlistChanged = 
-          data.assignedPlaylist && playlist && (
-            (playlist?.id !== data.assignedPlaylist?.id) ||
-            (playlist?.items?.length !== data.assignedPlaylist?.items?.length)
-          );
-        
-        if (playlistChanged) {
-          console.log('Playlist changed detected, reloading page...');
-          // Clear any cached data
-          localStorage.removeItem(`isodisplay_playlist_${display?.id}`);
-          // Force a full page reload
-          setTimeout(() => window.location.reload(), 100);
-          return;
-        }
-      }
-      
-      // Normal update without reload
-      setDisplay(data);
-      
-      if (data.assignedPlaylist) {
-        setPlaylist(data.assignedPlaylist);
-        setError(null);
-      } else {
-        setPlaylist(null);
-        // Don't set error for missing playlist - let the UI show "no content" message
-        setError(null);
-      }
-    } catch (err) {
-      console.error('Error fetching display:', err);
-      if (!isPolling) {
-        setError(err instanceof Error ? err.message : 'Failed to load display');
-      }
-    } finally {
-      if (!isPolling) {
-        setLoading(false);
-      }
-    }
-  };
+  }, [uniqueUrl, fetchDisplay]);
 
 
   if (loading) {
@@ -211,7 +255,7 @@ export default function DisplayViewerPage() {
         type="network-error"
         message={error}
         displayName={uniqueUrl}
-        onRetry={fetchDisplay}
+        onRetry={() => fetchDisplay(false)}
         showRetryButton={true}
         isConnected={isDisplayConnected}
       />
@@ -246,8 +290,8 @@ export default function DisplayViewerPage() {
         />
         
         {/* Clock Overlay */}
-        {display.clockSettings && (
-          <ClockOverlay settings={display.clockSettings} />
+        {display.clockSettings && getValidClockSettings(display.clockSettings) && (
+          <ClockOverlay settings={getValidClockSettings(display.clockSettings)!} />
         )}
         
       </div>

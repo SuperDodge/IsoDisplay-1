@@ -69,6 +69,7 @@ export const CreateDisplaySchema = z.object({
   assignedPlaylistId: z.string().uuid('Playlist ID must be a valid UUID').optional().nullable(),
   settings: DisplaySettingsSchema.optional(),
   clockSettings: z.any().optional(), // JSON clock configuration
+  isRaspberryPi: z.boolean().optional().default(false), // Raspberry Pi optimization flag
 });
 
 /**
@@ -89,6 +90,7 @@ export const UpdateDisplaySchema = z.object({
   assignedPlaylistId: z.string().uuid('Playlist ID must be a valid UUID').optional().nullable(),
   settings: DisplaySettingsSchema.optional(),
   clockSettings: z.any().optional(), // JSON clock configuration
+  isRaspberryPi: z.boolean().optional(), // Raspberry Pi optimization flag
 });
 
 /**

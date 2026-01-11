@@ -2,20 +2,26 @@
 .transition-fade-enter {
   opacity: 0;
   transform: translateZ(0); /* Force GPU acceleration */
+  z-index: 2;
 }
 .transition-fade-enter-active {
   opacity: 1;
   transform: translateZ(0);
-  transition: opacity var(--transition-duration, 1s) linear; /* Linear for smoother performance */
+  transition: opacity var(--transition-enter-duration, var(--transition-duration, 1s)) linear; /* Linear for smoother performance */
 }
 .transition-fade-exit {
   opacity: 1;
   transform: translateZ(0);
+  z-index: 1;
 }
 .transition-fade-exit-active {
   opacity: 0;
   transform: translateZ(0);
-  transition: opacity var(--transition-duration, 1s) linear;
+  transition: opacity var(--transition-exit-duration, var(--transition-duration, 1s)) linear;
+}
+.transition-fade-exit-done {
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* Crossfade (similar to fade but overlapping) */
